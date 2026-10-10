@@ -1,0 +1,46 @@
+// SPDX-License-Identifier: LicenseRef-EliasSteurerTachiom OR AGPL-3.0-only
+#include "ram.h"
+#include "sysinfoapi.h"
+#include <QtQml/qqml.h>
+#include <qmetatype.h>
+
+/*!
+    \class RAM
+    \inmodule ScreenPlaySysInfo
+    \brief  .
+
+*/
+RAM::RAM(QObject* parent)
+    : QObject(parent)
+{
+    connect(&m_updateTimer, &QTimer::timeout, this, &RAM::update);
+    m_updateTimer.start(m_tickRate);
+}
+
+/*!
+ * \brief RAM::update
+ */
+void RAM::update()
+{
+    // Get values from system
+    MEMORYSTATUSEX memoryStatus;
+    memoryStatus.dwLength = sizeof(MEMORYSTATUSEX); // needed for internal api
+    bool success = GlobalMemoryStatusEx(&memoryStatus);
+    if (!success)
+        return;
+
+    // Apply total values
+    setTotalPhysicalMemory(memoryStatus.ullTotalPhys);
+    setTotalPagingMemory(memoryStatus.ullTotalPageFile);
+    setTotalVirtualMemory(memoryStatus.ullTotalVirtual);
+
+    // calculate usages
+    setUsedPhysicalMemory(m_totalPhysicalMemory - memoryStatus.ullAvailPhys);
+    setUsedPagingMemory(m_totalPagingMemory - memoryStatus.ullAvailPageFile);
+    setUsedVirtualMemory(m_totalVirtualMemory - memoryStatus.ullAvailVirtual);
+
+    // set overall usage
+    setUsage(memoryStatus.dwMemoryLoad);
+}
+
+#include "moc_ram.cpp"
